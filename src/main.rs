@@ -109,7 +109,7 @@ async fn main() -> Result<()> {
         .select(&article_tags)
         .map(OverviewRow::parse_row)
         .filter_map(|row| row.ok())
-        .filter(|article| article.date < last_update)
+        .filter(|article| article.date > last_update)
         .filter(|article| {
             updates
                 .keys()
