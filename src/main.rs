@@ -61,15 +61,15 @@ impl OverviewRow {
 }
 
 #[tokio::main]
-async fn main() {
-    let config = Config::new().unwrap();
-    let local = alpm_with_conf(&config).unwrap();
+async fn main() -> Result<()> {
+    let config = Config::new()?;
+    let local = alpm_with_conf(&config)?;
 
     let tmp = tempfile::tempdir().unwrap().into_path();
-    let mut remote = Alpm::new("/", tmp.to_str().unwrap()).unwrap();
-    configure_alpm(&mut remote, &config).unwrap();
+    let mut remote = Alpm::new("/", tmp.to_str().unwrap())?;
+    configure_alpm(&mut remote, &config)?;
 
-    remote.syncdbs_mut().update(true).unwrap();
+    remote.syncdbs_mut().update(true)?;
 
     let remote_pkgs = remote
         .syncdbs()
@@ -86,7 +86,7 @@ async fn main() {
         .filter(|(name, version)| remote_pkgs.get(name) > Some(version))
         .collect::<HashMap<&str, &Ver>>();
 
-    let log_file = io::read_to_string(File::open(local.logfile().unwrap()).unwrap()).unwrap();
+    let log_file = io::read_to_string(File::open(local.logfile().unwrap())?)?;
     let lines = log_file.lines();
     let last_update = lines
         .into_iter()
@@ -95,15 +95,12 @@ async fn main() {
         .map(|line| line.split_whitespace().collect::<Vec<&str>>()[0])
         .map(|time| time.trim_matches(|c| c == '[' || c == ']'))
         .map(|time| chrono::DateTime::parse_from_str(time, "%Y-%m-%dT%H:%M:%S%z"))
-        .unwrap()
-        .unwrap();
+        .unwrap()?;
 
     let news = reqwest::get("https://archlinux.org/news")
-        .await
-        .unwrap()
+        .await?
         .text()
-        .await
-        .unwrap();
+        .await?;
 
     let news_html = Html::parse_document(&news);
     let article_tags = Selector::parse("tbody > tr").unwrap();
@@ -123,5 +120,7 @@ async fn main() {
     println!(
         "Here are some news entries that relate to packages you plan on updating: {:#?}",
         articles
-    )
+    );
+
+    Ok(())
 }
